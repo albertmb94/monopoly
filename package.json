@@ -18,7 +18,8 @@
     "react-router-dom": "^7.14.1",
     "tailwind-merge": "3.4.0",
     "uuid": "^13.0.0",
-    "zustand": "^5.0.12"
+    "zustand": "^5.0.12",
+    "@libsql/client": "latest"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.17",

@@ -25,7 +25,7 @@ export default async function handler(req: Request) {
   }
 
   // Descomenta cuando configures Turso:
-  /*
+  
   const { createClient } = await import('@libsql/client/web');
   const client = createClient({
     url: process.env.TURSO_DATABASE_URL!,
@@ -60,7 +60,7 @@ export default async function handler(req: Request) {
       headers: { 'content-type': 'application/json' },
     });
   }
-  */
+  
 
   return new Response(
     JSON.stringify({
