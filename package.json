@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.2",
     "clsx": "2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^12.12.0",
@@ -18,8 +19,7 @@
     "react-router-dom": "^7.14.1",
     "tailwind-merge": "3.4.0",
     "uuid": "^13.0.0",
-    "zustand": "^5.0.12",
-    "@libsql/client": "latest"
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.17",

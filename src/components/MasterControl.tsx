@@ -10,9 +10,14 @@ import { EndGameScreen } from './EndGameScreen';
 
 export const MasterControl: React.FC = () => {
   const game = useGameStore((s) => s.game);
+  const mode = useGameStore((s) => s.mode);
+  const isCloudSyncing = useGameStore((s) => s.isCloudSyncing);
+  const cloudError = useGameStore((s) => s.cloudError);
   const resetGame = useGameStore((s) => s.resetGame);
   const undoLastAction = useGameStore((s) => s.undoLastAction);
   const claimFreeParking = useGameStore((s) => s.claimFreeParking);
+
+  const isMulti = mode === 'multi';
 
   const [activeTab, setActiveTab] = useState<'players' | 'log'>('players');
   const [transferModal, setTransferModal] = useState<{ from?: string; to?: string } | null>(null);
@@ -39,6 +44,13 @@ export const MasterControl: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isMulti && (
+              <div className="flex items-center gap-1 text-xs text-emerald-100">
+                {cloudError ? '⚠️' : isCloudSyncing ? (
+                  <span className="animate-pulse">🔄</span>
+                ) : '☁️'}
+              </div>
+            )}
             <button
               onClick={() => undoLastAction()}
               disabled={game.undoHistory.length === 0}

@@ -2,16 +2,25 @@ import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 
 export const Lobby: React.FC = () => {
-  const game = useGameStore((s) => s.game)!;
-  const addPlayer = useGameStore((s) => s.addPlayer);
-  const removePlayer = useGameStore((s) => s.removePlayer);
-  const renamePlayer = useGameStore((s) => s.renamePlayer);
-  const startGame = useGameStore((s) => s.startGame);
-  const resetGame = useGameStore((s) => s.resetGame);
+  const game = useGameStore(s => s.game)!;
+  const mode = useGameStore(s => s.mode);
+  const isCloudSyncing = useGameStore(s => s.isCloudSyncing);
+  const cloudError = useGameStore(s => s.cloudError);
+  const syncToCloud = useGameStore(s => s.syncToCloud);
+  const syncFromCloud = useGameStore(s => s.syncFromCloud);
+  const addPlayer = useGameStore(s => s.addPlayer);
+  const removePlayer = useGameStore(s => s.removePlayer);
+  const renamePlayer = useGameStore(s => s.renamePlayer);
+  const startGame = useGameStore(s => s.startGame);
+  const resetGame = useGameStore(s => s.resetGame);
 
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [startLoading, setStartLoading] = useState(false);
+
+  const isMulti = mode === 'multi';
 
   const handleAdd = () => {
     if (!newName.trim()) return;
@@ -19,19 +28,85 @@ export const Lobby: React.FC = () => {
     setNewName('');
   };
 
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(game.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
+      const el = document.createElement('textarea');
+      el.value = game.code;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleStartGame = async () => {
+    if (isMulti) {
+      setStartLoading(true);
+      await syncFromCloud(); // Get latest state before starting
+    }
+    startGame();
+    if (isMulti) {
+      await syncToCloud(); // Push started state to cloud
+      setStartLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-700 to-amber-600 p-4 overflow-y-auto">
+    <div className={`min-h-screen p-4 overflow-y-auto ${
+      isMulti
+        ? 'bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900'
+        : 'bg-gradient-to-br from-emerald-900 via-emerald-700 to-amber-600'
+    }`}>
       <div className="max-w-md mx-auto py-6">
         <div className="bg-white rounded-2xl shadow-2xl p-6">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-emerald-900">Sala de espera</h2>
-              <p className="text-sm text-gray-500">Añade los jugadores antes de empezar</p>
+              <h2 className="text-2xl font-bold text-slate-900">Sala de espera</h2>
+              <p className="text-sm text-gray-500">
+                {isMulti ? 'Comparte el código para que otros se unan' : 'Añade los jugadores antes de empezar'}
+              </p>
             </div>
-            <div className="bg-emerald-100 text-emerald-800 font-mono font-bold px-3 py-1 rounded-lg text-sm">
+            {isMulti && (
+              <div className="flex items-center gap-1 text-xs text-indigo-600">
+                {isCloudSyncing && <span className="animate-pulse">🔄</span>}
+                <span>Online</span>
+              </div>
+            )}
+          </div>
+
+          {/* Código de partida - más grande en multi */}
+          {isMulti && (
+            <div className="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-4 mb-4 text-center">
+              <div className="text-xs text-indigo-600 font-semibold mb-1">CÓDIGO DE PARTIDA</div>
+              <div className="text-4xl font-mono font-extrabold tracking-[0.3em] text-indigo-900 mb-2">
+                {game.code}
+              </div>
+              <button
+                onClick={handleCopyCode}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+              >
+                {copied ? '✓ Copiado!' : '📋 Copiar código'}
+              </button>
+              {cloudError && (
+                <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
+                  ⚠️ {cloudError}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isMulti && (
+            <div className="bg-emerald-100 text-emerald-800 font-mono font-bold px-3 py-1 rounded-lg text-sm inline-block mb-4">
               #{game.code}
             </div>
-          </div>
+          )}
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
             🎲 <strong>Saldo inicial:</strong> {game.rules.initialBalance.toLocaleString('es-ES')} M ·{' '}
@@ -40,8 +115,9 @@ export const Lobby: React.FC = () => {
             {game.rules.propertySet === 'spanish' ? 'España' : 'Clásico'}
           </div>
 
+          {/* Lista de jugadores */}
           <div className="space-y-2 mb-4">
-            {game.players.map((p) => (
+            {game.players.map(p => (
               <div
                 key={p.id}
                 className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border"
@@ -56,12 +132,12 @@ export const Lobby: React.FC = () => {
                   <input
                     autoFocus
                     value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
+                    onChange={e => setEditName(e.target.value)}
                     onBlur={() => {
                       if (editName.trim()) renamePlayer(p.id, editName.trim());
                       setEditingId(null);
                     }}
-                    onKeyDown={(e) => {
+                    onKeyDown={e => {
                       if (e.key === 'Enter') {
                         if (editName.trim()) renamePlayer(p.id, editName.trim());
                         setEditingId(null);
@@ -79,7 +155,7 @@ export const Lobby: React.FC = () => {
                   >
                     <div className="font-semibold">{p.name}</div>
                     <div className="text-xs text-gray-500">
-                      {p.id === game.adminId ? '👑 Admin' : 'Jugador'}
+                      {p.id === game.adminId ? '👑 Admin' : isMulti ? '📱 Conectado' : 'Jugador'}
                     </div>
                   </div>
                 )}
@@ -95,12 +171,13 @@ export const Lobby: React.FC = () => {
             ))}
           </div>
 
+          {/* Añadir jugador (solo admin en multi, siempre en single) */}
           <div className="flex gap-2 mb-5">
             <input
               type="text"
               value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Nombre del jugador"
               className="flex-1 px-4 py-3 border-2 rounded-lg focus:border-emerald-500 focus:outline-none"
             />
@@ -111,18 +188,35 @@ export const Lobby: React.FC = () => {
               +
             </button>
           </div>
+          {isMulti && (
+            <p className="text-xs text-gray-400 mb-3 -mt-3">
+              Los jugadores también pueden unirse desde su móvil con el código.
+            </p>
+          )}
 
           <button
-            onClick={startGame}
-            disabled={game.players.length < 2}
-            className="w-full bg-amber-500 hover:bg-amber-400 disabled:bg-gray-300 text-white font-bold py-4 rounded-xl text-lg shadow-lg"
+            onClick={handleStartGame}
+            disabled={game.players.length < 2 || startLoading}
+            className={`w-full font-bold py-4 rounded-xl text-lg shadow-lg transition disabled:bg-gray-300 disabled:text-gray-500 ${
+              isMulti
+                ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                : 'bg-amber-500 hover:bg-amber-400 text-white'
+            }`}
           >
-            🎲 Empezar partida ({game.players.length}/8)
+            {startLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Iniciando...
+              </span>
+            ) : (
+              `🎲 Empezar partida (${game.players.length}/8)`
+            )}
           </button>
           {game.players.length < 2 && (
-            <p className="text-center text-xs text-gray-500 mt-2">
-              Mínimo 2 jugadores
-            </p>
+            <p className="text-center text-xs text-gray-500 mt-2">Mínimo 2 jugadores</p>
           )}
 
           <button
