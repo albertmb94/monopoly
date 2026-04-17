@@ -1,255 +1,278 @@
 import React, { useState } from 'react';
-import { GameService } from '../services/gameService';
-import { GameRules } from '../types';
 import { useGameStore } from '../store/gameStore';
+import { GameRules, PropertySet } from '../types';
 
-interface StartScreenProps {
-  onGameCreated: (gameCode: string) => void;
-  onGameJoined: (gameCode: string) => void;
-}
-
-export const StartScreen: React.FC<StartScreenProps> = ({
-  onGameCreated,
-  onGameJoined,
-}) => {
-  const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
-  const [playerName, setPlayerName] = useState('');
-  const [joinCode, setJoinCode] = useState('');
-  const [gameRules, setGameRules] = useState<GameRules>({
-    initialBalance: 2000,
+export const StartScreen: React.FC = () => {
+  const [step, setStep] = useState<'mode' | 'config' | 'multi-info'>('mode');
+  const [adminName, setAdminName] = useState('');
+  const [rules, setRules] = useState<GameRules>({
+    initialBalance: 1500,
     freeParking: false,
     doubleOnExactStart: false,
     bankruptcyRule: 'to_creditor',
     propertySet: 'standard',
   });
 
-  const { setGame, setSession } = useGameStore();
+  const createGame = useGameStore((s) => s.createGame);
 
-  const handleCreateGame = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!playerName.trim()) return;
-
-    const game = GameService.createGame(
-      `player_${Date.now()}`,
-      playerName,
-      gameRules
-    );
-
-    setGame(game);
-    setSession({
-      roomId: game.id,
-      playerId: game.adminId,
-      playerName,
-    });
-
-    onGameCreated(game.code);
+  const handleCreate = () => {
+    if (!adminName.trim()) return;
+    createGame(adminName.trim(), rules, 'single');
   };
 
-  const handleJoinGame = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!playerName.trim() || !joinCode.trim()) return;
-
-    const game = GameService.getGameByCode(joinCode.toUpperCase());
-    if (!game) {
-      alert('Código de partida no válido');
-      return;
-    }
-
-    const player = GameService.addPlayerToGame(game.id, playerName);
-    const updatedGame = GameService.getGameById(game.id);
-
-    if (updatedGame) {
-      setGame(updatedGame);
-      setSession({
-        roomId: game.id,
-        playerId: player.id,
-        playerName,
-      });
-
-      onGameJoined(game.code);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-400/50 mb-4">
-            <span className="text-4xl font-bold text-white">M</span>
+  if (step === 'mode') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-700 to-amber-600 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <h1 className="text-5xl font-extrabold text-white mb-2 drop-shadow-lg">
+              🏦 Banca Monopoly
+            </h1>
+            <p className="text-emerald-100">
+              Reemplaza el dinero físico y automatiza tu partida
+            </p>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">MONOPOLY</h1>
-          <p className="text-slate-400">Gestor de partidas en tiempo real</p>
-        </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 bg-slate-800 p-1 rounded-lg">
+          <div className="space-y-3">
+            <button
+              onClick={() => setStep('config')}
+              className="w-full bg-white hover:bg-emerald-50 text-emerald-900 rounded-2xl p-5 shadow-2xl transition transform hover:scale-[1.02] text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="text-4xl">📱</div>
+                <div className="flex-1">
+                  <div className="font-bold text-lg">Modo en este dispositivo</div>
+                  <div className="text-sm text-gray-600">
+                    Un solo móvil pasa entre jugadores. El admin gestiona todo.
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-semibold">
+                ✓ Recomendado · Funciona sin conexión
+              </div>
+            </button>
+
+            <button
+              onClick={() => setStep('multi-info')}
+              className="w-full bg-white/10 backdrop-blur hover:bg-white/20 border-2 border-white/30 text-white rounded-2xl p-5 transition text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="text-4xl">🌐</div>
+                <div className="flex-1">
+                  <div className="font-bold text-lg">Modo multi-dispositivo</div>
+                  <div className="text-sm text-white/80">
+                    Cada jugador en su móvil. Requiere configurar Turso.
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'multi-info') {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white p-4 overflow-y-auto">
+        <div className="max-w-2xl mx-auto py-8">
           <button
-            onClick={() => setActiveTab('create')}
-            className={`flex-1 py-3 px-4 rounded-md font-semibold transition-all ${
-              activeTab === 'create'
-                ? 'bg-emerald-500 text-white'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            onClick={() => setStep('mode')}
+            className="text-emerald-400 mb-6 hover:underline"
           >
-            Nueva Partida
+            ← Volver
           </button>
+
+          <h2 className="text-3xl font-bold mb-4">🌐 Modo multi-dispositivo</h2>
+          <p className="text-slate-300 mb-6">
+            Para que varios dispositivos se sincronicen en tiempo real, necesitas
+            configurar una base de datos serverless. Esta app está preparada para{' '}
+            <span className="text-emerald-400 font-semibold">Turso (libSQL)</span> +{' '}
+            <span className="text-emerald-400 font-semibold">Vercel Functions</span>.
+          </p>
+
+          <div className="bg-amber-900/40 border border-amber-600 rounded-lg p-4 mb-6">
+            <div className="font-semibold text-amber-200 mb-2">⚠️ Por qué no funciona el join ahora</div>
+            <p className="text-amber-100 text-sm">
+              Sin un backend real, las partidas se guardan en el navegador local de
+              cada dispositivo (localStorage). El dispositivo que se intenta unir
+              no puede &quot;ver&quot; la partida del creador, por eso aparece el código como inválido.
+            </p>
+          </div>
+
+          <div className="bg-slate-800 rounded-lg p-5 space-y-4">
+            <h3 className="font-bold text-xl">Pasos de configuración</h3>
+
+            <div>
+              <div className="font-semibold text-emerald-400">1. Crear DB en Turso</div>
+              <pre className="bg-black/40 p-3 rounded text-xs mt-1 overflow-x-auto"><code>turso db create monopoly-bank
+turso db tokens create monopoly-bank</code></pre>
+            </div>
+
+            <div>
+              <div className="font-semibold text-emerald-400">2. Variables de entorno en Vercel</div>
+              <pre className="bg-black/40 p-3 rounded text-xs mt-1 overflow-x-auto"><code>TURSO_DATABASE_URL=libsql://...
+TURSO_AUTH_TOKEN=eyJ...</code></pre>
+            </div>
+
+            <div>
+              <div className="font-semibold text-emerald-400">3. Esquema SQL</div>
+              <pre className="bg-black/40 p-3 rounded text-xs mt-1 overflow-x-auto"><code>{`CREATE TABLE games (
+  code TEXT PRIMARY KEY,
+  state TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);`}</code></pre>
+              <p className="text-xs text-slate-400 mt-1">
+                El proyecto incluye las API routes en <code className="bg-slate-700 px-1 rounded">/api/games/</code> listas
+                para usar. Solo necesitas configurar las variables de entorno y
+                ejecutar el SQL anterior.
+              </p>
+            </div>
+
+            <div>
+              <div className="font-semibold text-emerald-400">4. Re-deploy en Vercel</div>
+              <p className="text-sm text-slate-300">
+                Una vez configurado, el botón de modo multi-dispositivo será funcional.
+              </p>
+            </div>
+          </div>
+
           <button
-            onClick={() => setActiveTab('join')}
-            className={`flex-1 py-3 px-4 rounded-md font-semibold transition-all ${
-              activeTab === 'join'
-                ? 'bg-emerald-500 text-white'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            onClick={() => setStep('config')}
+            className="mt-6 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl"
           >
-            Unirse
+            Mientras tanto, jugar en este dispositivo →
           </button>
         </div>
+      </div>
+    );
+  }
 
-        {/* Content */}
-        <div className="bg-slate-800 rounded-xl p-6 shadow-2xl">
-          {activeTab === 'create' ? (
-            <form onSubmit={handleCreateGame} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Tu nombre
-                </label>
-                <input
-                  type="text"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="Ej: Juan"
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                />
+  // Configuración
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-700 to-amber-600 p-4 overflow-y-auto">
+      <div className="max-w-md mx-auto py-6">
+        <button
+          onClick={() => setStep('mode')}
+          className="text-white mb-4 hover:underline"
+        >
+          ← Volver
+        </button>
+
+        <div className="bg-white rounded-2xl shadow-2xl p-6 space-y-5">
+          <h2 className="text-2xl font-bold text-emerald-900">Nueva Partida</h2>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Tu nombre (Admin)
+            </label>
+            <input
+              type="text"
+              value={adminName}
+              onChange={(e) => setAdminName(e.target.value)}
+              placeholder="Ej: Banquero"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:outline-none"
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Saldo inicial por jugador
+            </label>
+            <input
+              type="number"
+              value={rules.initialBalance}
+              onChange={(e) =>
+                setRules({ ...rules, initialBalance: Number(e.target.value) || 0 })
+              }
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Edición del tablero
+            </label>
+            <select
+              value={rules.propertySet}
+              onChange={(e) =>
+                setRules({ ...rules, propertySet: e.target.value as PropertySet })
+              }
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-emerald-500 focus:outline-none bg-white"
+            >
+              <option value="standard">Clásico (Estados Unidos)</option>
+              <option value="spanish">España (Madrid / Barcelona)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Podrás renombrar cualquier calle durante la partida.
+            </p>
+          </div>
+
+          <h3 className="font-semibold text-emerald-900 pt-2 border-t">
+            Reglas de la casa
+          </h3>
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={rules.freeParking}
+              onChange={(e) =>
+                setRules({ ...rules, freeParking: e.target.checked })
+              }
+              className="mt-1 w-5 h-5 accent-emerald-600"
+            />
+            <div className="flex-1">
+              <div className="font-medium">Parking Gratuito 💰</div>
+              <div className="text-xs text-gray-500">
+                Los impuestos van a un bote central que recoge quien cae en Parking.
               </div>
+            </div>
+          </label>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Saldo Inicial
-                </label>
-                <input
-                  type="number"
-                  value={gameRules.initialBalance}
-                  onChange={(e) =>
-                    setGameRules({
-                      ...gameRules,
-                      initialBalance: parseInt(e.target.value),
-                    })
-                  }
-                  min="500"
-                  step="100"
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                />
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={rules.doubleOnExactStart}
+              onChange={(e) =>
+                setRules({ ...rules, doubleOnExactStart: e.target.checked })
+              }
+              className="mt-1 w-5 h-5 accent-emerald-600"
+            />
+            <div className="flex-1">
+              <div className="font-medium">Doble en Salida exacta</div>
+              <div className="text-xs text-gray-500">
+                Si caes exactamente en Salida, cobras el doble.
               </div>
+            </div>
+          </label>
 
-              <div className="space-y-2">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={gameRules.freeParking}
-                    onChange={(e) =>
-                      setGameRules({
-                        ...gameRules,
-                        freeParking: e.target.checked,
-                      })
-                    }
-                    className="w-4 h-4 rounded accent-emerald-500"
-                  />
-                  <span className="text-sm text-slate-300">
-                    Parking Gratuito (bote central)
-                  </span>
-                </label>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Bancarrota: ¿qué pasa con los bienes?
+            </label>
+            <select
+              value={rules.bankruptcyRule}
+              onChange={(e) =>
+                setRules({
+                  ...rules,
+                  bankruptcyRule: e.target.value as GameRules['bankruptcyRule'],
+                })
+              }
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white"
+            >
+              <option value="to_creditor">Pasan al acreedor</option>
+              <option value="to_bank">Van a la banca para subasta</option>
+            </select>
+          </div>
 
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={gameRules.doubleOnExactStart}
-                    onChange={(e) =>
-                      setGameRules({
-                        ...gameRules,
-                        doubleOnExactStart: e.target.checked,
-                      })
-                    }
-                    className="w-4 h-4 rounded accent-emerald-500"
-                  />
-                  <span className="text-sm text-slate-300">
-                    Doble al caer exactamente en Salida
-                  </span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Regla de Bancarrota
-                </label>
-                <select
-                  value={gameRules.bankruptcyRule}
-                  onChange={(e) =>
-                    setGameRules({
-                      ...gameRules,
-                      bankruptcyRule: e.target.value as 'to_creditor' | 'to_bank',
-                    })
-                  }
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="to_creditor">
-                    Bienes pasan al acreedor
-                  </option>
-                  <option value="to_bank">Bienes van a la Banca</option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 rounded-lg transition-all"
-              >
-                Crear Partida
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleJoinGame} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Tu nombre
-                </label>
-                <input
-                  type="text"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="Ej: Juan"
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Código de Partida (6 caracteres)
-                </label>
-                <input
-                  type="text"
-                  value={joinCode}
-                  onChange={(e) =>
-                    setJoinCode(e.target.value.toUpperCase().slice(0, 6))
-                  }
-                  placeholder="Ej: ABC123"
-                  maxLength={6}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono text-lg text-center"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 rounded-lg transition-all"
-              >
-                Unirse a Partida
-              </button>
-            </form>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="mt-8 text-center text-slate-500 text-sm">
-          <p>Versión 1.0 • Monopoly Game Manager</p>
+          <button
+            onClick={handleCreate}
+            disabled={!adminName.trim()}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-300 text-white font-bold py-4 rounded-xl text-lg shadow-lg transition"
+          >
+            Crear partida →
+          </button>
         </div>
       </div>
     </div>

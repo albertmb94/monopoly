@@ -2,8 +2,10 @@
 
 export type PropertyType = 'street' | 'station' | 'utility' | 'tax' | 'special';
 export type GameStatus = 'lobby' | 'playing' | 'finished';
-export type BanktuptcyRule = 'to_creditor' | 'to_bank';
+export type BankruptcyRule = 'to_creditor' | 'to_bank';
 export type PlayerRole = 'player' | 'banker' | 'admin';
+export type PropertySet = 'standard' | 'spanish' | 'custom';
+export type GameMode = 'single' | 'multi';
 
 export interface Property {
   id: string;
@@ -24,18 +26,19 @@ export interface Player {
   id: string;
   name: string;
   balance: number;
-  properties: string[]; // IDs de propiedades
-  mortgagedProperties: string[]; // IDs de propiedades hipotecadas
-  houses: number; // Cantidad de casas
-  hotels: number; // Cantidad de hoteles
+  properties: string[];
+  mortgagedProperties: string[];
+  houses: number;
+  hotels: number;
+  housesPerProperty?: Record<string, number>; // 0-4 = casas, 5 = hotel
   role: PlayerRole;
-  color: string; // Color visual del jugador
+  color: string;
   isActive: boolean;
 }
 
 export interface Game {
   id: string;
-  code: string; // Código de 6 caracteres
+  code: string;
   createdAt: number;
   status: GameStatus;
   adminId: string;
@@ -44,8 +47,8 @@ export interface Game {
   rules: GameRules;
   currentPlayerId: string;
   round: number;
-  totalTime: number; // en segundos
-  freeParking: number; // Bote central si Parking Gratuito está ON
+  totalTime: number;
+  freeParking: number;
   transactions: Transaction[];
   trades: Trade[];
   undoHistory: UndoAction[];
@@ -55,18 +58,18 @@ export interface GameRules {
   initialBalance: number;
   freeParking: boolean;
   doubleOnExactStart: boolean;
-  bankruptcyRule: BanktuptcyRule;
-  propertySet: 'standard' | 'custom';
+  bankruptcyRule: BankruptcyRule;
+  propertySet: PropertySet;
   customProperties?: Property[];
 }
 
 export interface Transaction {
   id: string;
   timestamp: number;
-  fromPlayerId: string | 'bank'; // 'bank' para transacciones del banco
+  fromPlayerId: string | 'bank';
   toPlayerId: string | 'bank';
   amount: number;
-  reason: string; // "Rent", "Tax", "Free Parking", etc.
+  reason: string;
   propertyId?: string;
   metadata?: Record<string, any>;
 }
@@ -92,15 +95,15 @@ export interface SpecialClause {
   affectedProperty?: string;
   affectedPlayer?: string;
   condition?: string;
-  duration?: number; // en turnos
+  duration?: number;
 }
 
 export interface UndoAction {
   id: string;
   gameId: string;
+  type: 'transaction' | 'property' | 'mortgage';
+  data: any;
   timestamp: number;
-  action: Transaction | Trade;
-  reversalAction: Transaction | Trade;
 }
 
 export interface GameSession {
